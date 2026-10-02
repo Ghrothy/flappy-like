@@ -137,6 +137,25 @@ if (!exe) { console.error('no browser found'); process.exit(1); }
   await shoot('03-flap-effect');
   await unfreeze();
 
+  // Deliberately awkward gate placement: one gate as low as legal, one as high
+  // as legal, so the top/bottom boundary rendering is visible at both extremes.
+  await p.evaluate(`
+    var g = window.__game;
+    var C = window.CONFIG;
+    var Ob = window.Entities.Obstacle;
+    var groundY = g.world.height - C.world.groundHeight;
+    g.obstacles.length = 0;
+    g.player.y = g.world.height * 0.5;
+    g.player.vy = 0;
+    g.obstacles.push(new Ob(g.world, 30, 62));
+    g.obstacles.push(new Ob(g.world, g.world.width * 0.45, groundY - C.obstacles.gap - 56));
+    g.render();
+    return g.obstacles.length;
+  `);
+  await freeze();
+  await shoot('06-gate-boundaries');
+  await unfreeze();
+
   // Game over
   await p.evaluate(`
     var g = window.__game;

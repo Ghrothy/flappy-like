@@ -173,16 +173,22 @@
     _drawPipe(ctx, r, isTop) {
       const c = CONFIG.colors;
       const capH = this.h;
+
+      // The cap always sits at the gap-facing end of the pipe; the shaft fills
+      // the remaining stretch between the cap and the boundary it hangs from.
       const capY = isTop ? r.y + r.h - capH : r.y;
-      const shaftH = r.h - capH;
+      const shaftY = isTop ? r.y : r.y + capH;
+      const shaftH = Math.max(0, r.h - capH);
 
       // shaft
-      const g = ctx.createLinearGradient(r.x, 0, r.x + r.w, 0);
-      g.addColorStop(0, c.pipeDark);
-      g.addColorStop(0.35, c.pipe);
-      g.addColorStop(1, c.pipeDark);
-      ctx.fillStyle = g;
-      ctx.fillRect(r.x, capY, r.w, shaftH);
+      if (shaftH > 0) {
+        const g = ctx.createLinearGradient(r.x, 0, r.x + r.w, 0);
+        g.addColorStop(0, c.pipeDark);
+        g.addColorStop(0.35, c.pipe);
+        g.addColorStop(1, c.pipeDark);
+        ctx.fillStyle = g;
+        ctx.fillRect(r.x, shaftY, r.w, shaftH);
+      }
 
       // cap
       const cg = ctx.createLinearGradient(r.x, 0, r.x + r.w, 0);
@@ -192,9 +198,11 @@
       ctx.fillStyle = cg;
       ctx.fillRect(r.x - 5, capY, r.w + 10, capH);
 
-      // highlight
-      ctx.fillStyle = 'rgba(255,255,255,0.22)';
-      ctx.fillRect(r.x + 6, capY + 3, 5, Math.max(0, r.h - capH - 6));
+      // highlight, kept on the shaft
+      if (shaftH > 8) {
+        ctx.fillStyle = 'rgba(255,255,255,0.22)';
+        ctx.fillRect(r.x + 6, shaftY + 3, 5, shaftH - 6);
+      }
     }
   }
 

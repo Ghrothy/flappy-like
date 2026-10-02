@@ -154,6 +154,53 @@ function newGame() {
   return g;
 }
 
+/**
+ * Canvas stub that records every fillRect, so tests can inspect exactly which
+ * vertical spans a pipe painted and prove there is no uncovered band between
+ * the pipe ends and the top/ground boundaries.
+ */
+function recordingCtx() {
+  const rects = [];
+  const noop = () => {};
+  return {
+    rects,
+    save: noop, restore: noop, translate: noop, rotate: noop, scale: noop, setTransform: noop,
+    beginPath: noop, closePath: noop, moveTo: noop, lineTo: noop, arc: noop, ellipse: noop,
+    fill: noop, stroke: noop, clearRect: noop,
+    createLinearGradient: () => ({ addColorStop: noop }),
+    fillRect: (x, y, w, h) => rects.push({ x, y, w, h })
+  };
+}
+
+/**
+ * Vertical spans painted by the top pipe and the bottom pipe of `ob`.
+ * `probeX` is a column through the middle of the gate. Both pipes occupy the
+ * same x range, so spans are classified by their y position relative to the gap.
+ */
+function pipeCoverage(ob, probeX) {
+  const ctx = recordingCtx();
+  ob.draw(ctx);
+  const spans = { top: [], bottom: [] };
+  for (const r of ctx.rects) {
+    if (probeX < r.x || probeX > r.x + r.w) continue;
+    const list = r.y + r.h <= ob.gapTop + 1e-9 ? spans.top : spans.bottom;
+    list.push([r.y, r.y + r.h]);
+  }
+  return spans;
+}
+
+/** Union of [start,end] intervals, sorted and merged. */
+function mergeSpans(spans) {
+  const sorted = spans.slice().sort((a, b) => a[0] - b[0]);
+  const out = [];
+  for (const s of sorted) {
+    const last = out[out.length - 1];
+    if (last && s[0] <= last[1] + 1e-9) last[1] = Math.max(last[1], s[1]);
+    else out.push([s[0], s[1]]);
+  }
+  return out;
+}
+
 /** Advance the game by `seconds` at the fixed timestep. */
 function advance(g, seconds) {
   const step = 1 / 60;
@@ -272,6 +319,83 @@ test('gates scroll right to left and get culled when off-screen', () => {
   }
   advance(g, 20);
   assert(g.obstacles.every((ob) => ob.right >= -8), 'off-screen gates should be culled');
+});
+
+// --- gate rendering reaches the top and bottom boundaries ---
+test('pipes render continuously from the top edge and down to the ground', () => {
+  const g = newGame();
+  const Obstacle = win.Entities.Obstacle;
+  const groundY = g.world.height - CONFIG.world.groundHeight;
+
+  // Sweep gate positions, including both extremes of the spawn range.
+  const positions = [
+    CONFIG.obstacles.marginTop,                       // gate as low as possible
+    g.world.height * 0.35,
+    g.world.height * 0.5,
+    groundY - CONFIG.obstacles.gap - CONFIG.obstacles.marginBottom // gate as high as possible
+  ];
+
+  for (const gapTop of positions) {
+    const ob = new Obstacle(g.world, 120, gapTop);
+    const midX = ob.x + ob.w / 2;
+    const cov = pipeCoverage(ob, midX);
+
+    const topMerged = mergeSpans(cov.top);
+    const bottomMerged = mergeSpans(cov.bottom);
+
+    // Top pipe: painted spans must start exactly at y = 0 ...
+    assertEq(topMerged.length, 1,
+      'top pipe should be one unbroken span from the ceiling (gapTop=' + gapTop + '): ' +
+      JSON.stringify(topMerged));
+    assert(Math.abs(topMerged[0][0]) < 1e-9,
+      'top pipe must start at y=0, starts at ' + topMerged[0][0]);
+    // ... and end exactly at the top of the gap (the cap is gap-facing).
+    assert(Math.abs(topMerged[0][1] - ob.gapTop) < 1e-6,
+      'top pipe should end at gapTop=' + ob.gapTop + ', ends at ' + topMerged[0][1]);
+
+    // Bottom pipe: painted spans must end exactly at the ground line ...
+    assertEq(bottomMerged.length, 1,
+      'bottom pipe should be one unbroken span to the ground (gapTop=' + gapTop + '): ' +
+      JSON.stringify(bottomMerged));
+    assert(Math.abs(bottomMerged[0][1] - groundY) < 1e-6,
+      'bottom pipe must reach the ground at ' + groundY + ', ends at ' + bottomMerged[0][1]);
+    // ... and begin at the bottom of the gap (the cap is gap-facing).
+    assert(Math.abs(bottomMerged[0][0] - ob.gapBottom) < 1e-6,
+      'bottom pipe should start at gapBottom=' + ob.gapBottom + ', starts at ' + bottomMerged[0][0]);
+  }
+});
+
+test('pipe painting never intrudes into the playable gap', () => {
+  const g = newGame();
+  const Obstacle = win.Entities.Obstacle;
+  for (const gapTop of [CONFIG.obstacles.marginTop, 250, 300]) {
+    const ob = new Obstacle(g.world, 120, gapTop);
+    const midX = ob.x + ob.w / 2;
+    const cov = pipeCoverage(ob, midX);
+    const topMerged = mergeSpans(cov.top);
+    const bottomMerged = mergeSpans(cov.bottom);
+    assert(topMerged[0][1] <= ob.gapTop + 1e-9, 'top pipe overlaps the gap');
+    assert(bottomMerged[0][0] >= ob.gapBottom - 1e-9, 'bottom pipe overlaps the gap');
+  }
+});
+
+test('pipe drawing does not change collision geometry', () => {
+  const g = newGame();
+  const Obstacle = win.Entities.Obstacle;
+  const groundY = g.world.height - CONFIG.world.groundHeight;
+  const ob = new Obstacle(g.world, 200, 200);
+  const [top, bottom] = ob.rects();
+  assertEq(top.y, 0, 'top collision rect starts at the ceiling');
+  assertEq(top.h, 200, 'top collision rect height');
+  assertEq(bottom.y, ob.gapBottom, 'bottom collision rect starts at the gap');
+  assertEq(bottom.y + bottom.h, groundY, 'bottom collision rect ends at the ground');
+
+  // Drawing must not move the gate or mutate its gap.
+  const xBefore = ob.x;
+  const gapBefore = ob.gapBottom - ob.gapTop;
+  ob.draw(recordingCtx());
+  assertEq(ob.x, xBefore, 'draw() should not move the gate');
+  assertEq(ob.gapBottom - ob.gapTop, gapBefore, 'draw() should not change the gap');
 });
 
 // --- scoring ---
