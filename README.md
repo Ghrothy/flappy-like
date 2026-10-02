@@ -1,8 +1,6 @@
 # Pip's Peril
 
-A small original arcade game in the "tap to flap, pass the gates" genre.
-Plain HTML + CSS + JavaScript, no external dependencies, no downloaded art or
-audio — every shape is drawn with canvas primitives.
+A small test game for Hermes Agent.
 
 ## Run it
 
