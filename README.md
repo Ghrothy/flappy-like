@@ -41,6 +41,7 @@ gate. Best score is kept in `localStorage`.
 ## Tests
 
     node tests/game.test.js        # 16 headless logic tests (no browser)
+    node tests/playability.js 200  # 200 seeded autopilot runs: no unreachable gates
     node tests/server.js           # static server on :8123 (leave running)
     node tests/browser.test.js     # 16 headless-browser tests via CDP
     node tests/screenshot.js       # writes PNGs to screenshots/

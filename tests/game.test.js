@@ -254,7 +254,9 @@ test('gates spawn over time and are passable vertically', () => {
   for (const ob of g.obstacles) {
     assert(ob.gapTop >= 40, 'gap too close to ceiling: ' + ob.gapTop);
     assert(ob.gapBottom <= groundY - 20, 'gap too close to ground: ' + ob.gapBottom);
-    assertEq(ob.gapBottom - ob.gapTop, CONFIG.obstacles.gap);
+    // The gap is exact in configuration; allow for float drift as gates move.
+    assert(Math.abs((ob.gapBottom - ob.gapTop) - CONFIG.obstacles.gap) < 1e-6,
+      'gap should stay ' + CONFIG.obstacles.gap + ', got ' + (ob.gapBottom - ob.gapTop));
   }
 });
 
