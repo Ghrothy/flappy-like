@@ -17,6 +17,16 @@ Option B — serve the folder (any static server works):
 
 Then visit the printed URL.
 
+## Play online
+
+Every push to `master` is published automatically by GitHub Actions:
+
+    https://ghrothy.github.io/flappy-like/
+
+The workflow stages only `index.html`, `css/` and `js/` — tests and docs are
+never deployed. All asset paths in the page are relative, so the game works
+unchanged under the repository's Pages path.
+
 ## Controls
 
 | Action | Desktop | Mobile |
@@ -46,6 +56,12 @@ gate. Best score is kept in `localStorage`.
     node tests/browser.test.js     # 16 headless-browser tests via CDP
     node tests/verify-gates.js     # real-pixel check: pipes reach top/ground
     node tests/screenshot.js       # writes PNGs to screenshots/
+
+To simulate GitHub Pages hosting (serves the staged site under `/flappy-like/`,
+exactly what the deploy workflow ships) and drive it in a browser:
+
+    node tests/subpath-check.js           # terminal 1: serves on :8199
+    node tests/subpath-browser.test.js    # terminal 2: 9 checks against it
 
 `browser.test.js` launches Edge/Chrome headless with a temporary profile and
 drives the page over the DevTools protocol using only Node built-ins — there is

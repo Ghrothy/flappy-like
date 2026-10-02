@@ -1,0 +1,81 @@
+# Deploy Pip's Peril to GitHub Pages.
+#
+# The game is a static site with no build step, so this workflow stages only
+# the files the browser actually needs (index.html, css/, js/) and publishes
+# that directory. Tests, package.json and docs are never deployed.
+#
+# Every push to the default branch republishes the current game.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  # Lets a failed deploy be re-run from the Actions UI without a new commit.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race; queue instead of cancelling a live one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Stage the deployable site
+        # Copy only runtime assets. Paths stay relative in index.html, so the
+        # game works unchanged under /<repo>/ on the Pages project URL.
+        run: |
+          set -euo pipefail
+          mkdir -p site/css site/js
+          cp index.html site/index.html
+          cp css/style.css site/css/style.css
+          cp js/config.js   site/js/config.js
+          cp js/entities.js site/js/entities.js
+          cp js/game.js     site/js/game.js
+          cp js/main.js     site/js/main.js
+          echo "--- staged files ---"
+          find site -type f | sort
+
+      - name: Verify every referenced asset is staged
+        # Guards against a stale or partial site directory: a missing asset
+        # would ship a blank page with only a console error to show for it.
+        run: |
+          set -euo pipefail
+          fail=0
+          for asset in $(grep -oE '(href|src)="[^"]+"' index.html \
+                          | sed -E 's/.*="([^"]+)"/\1/' \
+                          | grep -v '^data:'); do
+            if [ -f "site/$asset" ]; then
+              echo "ok   $asset"
+            else
+              echo "MISS $asset"
+              fail=1
+            fi
+          done
+          [ "$fail" -eq 0 ] || { echo "staged site is incomplete"; exit 1; }
+          echo "all referenced assets are present"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

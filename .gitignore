@@ -1,5 +1,6 @@
 node_modules/
 screenshots/
+.gp-sim/
 .DS_Store
 Thumbs.db
 *.log
