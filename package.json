@@ -1,0 +1,15 @@
+{
+  "name": "pips-peril",
+  "version": "1.0.0",
+  "description": "Pip's Peril - a small original one-button arcade game (HTML + CSS + JS, no dependencies)",
+  "private": true,
+  "scripts": {
+    "start": "node tests/server.js",
+    "test": "node tests/game.test.js",
+    "test:browser": "node tests/server.js & node tests/browser.test.js",
+    "test:all": "node tests/game.test.js && node tests/browser.test.js",
+    "screenshots": "node tests/screenshot.js"
+  },
+  "keywords": ["game", "canvas", "arcade"],
+  "license": "MIT"
+}
