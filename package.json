@@ -9,6 +9,7 @@
     "test:playability": "node tests/playability.js 200",
     "test:gates": "node tests/verify-gates.js",
     "test:subpath": "node tests/subpath-check.js",
+    "test:live": "node tests/live-check.js",
     "test:browser": "node tests/server.js & node tests/browser.test.js",
     "test:all": "node tests/game.test.js && node tests/playability.js 200 && node tests/browser.test.js && node tests/verify-gates.js",
     "screenshots": "node tests/screenshot.js"

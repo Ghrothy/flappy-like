@@ -63,6 +63,10 @@ exactly what the deploy workflow ships) and drive it in a browser:
     node tests/subpath-check.js           # terminal 1: serves on :8199
     node tests/subpath-browser.test.js    # terminal 2: 9 checks against it
 
+Against the live deployment (needs no local server):
+
+    node tests/live-check.js              # 13 checks on the real Pages URL
+
 `browser.test.js` launches Edge/Chrome headless with a temporary profile and
 drives the page over the DevTools protocol using only Node built-ins — there is
 no dependency to install. `package.json` exposes these as `npm test`,
